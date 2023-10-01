@@ -1,0 +1,93 @@
+select *
+from [dbo].[coviddeaths]
+
+select *
+from [dbo].[coviddeaths] where location =' ' or location IS NULL
+
+select location, total_cases,total_deaths,(total_cases/total_deaths)*100
+from [dbo].[coviddeaths] order by 4 desc
+
+select location, total_cases,population,date,(total_cases/population)*100 as percenta
+from [dbo].[coviddeaths] order by 5
+
+select location,population, max( total_deaths)as highest ,max(total_cases/population)*100 as percenta
+from [dbo].[coviddeaths] where total_cases is not null and continent is not null
+group by location, population,total_cases
+order by percenta
+
+select * from [dbo].[coviddeaths]
+where continent is not null
+
+
+select continent,location, max( total_deaths)as highest 
+from [dbo].[coviddeaths] where  continent is not null
+group by continent,location 
+order by highest desc
+
+--global numbeer
+
+select location,population, max( total_deaths)as highest ,max(total_cases/population)*100 as percenta
+from [dbo].[coviddeaths] where total_cases is not null and continent is not null
+group by location, population,total_cases
+order by percenta
+
+--looking at total population vs vAccination
+select dea.continent, dea.location,dea.date, dea.population,vac.new_vaccinations
+,sum(cast(vac.new_vaccinations as int)) over  (partition by dea.location order by dea.location,dea.date) as rollingpeople
+from [dbo].[vacination$] vac
+join [dbo].[coviddeaths] dea
+on dea.location=vac.location
+and dea.date=vac.date
+where dea.continent is not null
+order by 2,3
+
+--use cte
+
+with popvsvac(continent ,location,date,population,new_vaccinations,rollingpeople)
+as
+(
+select dea.continent, dea.location,dea.date, dea.population,vac.new_vaccinations
+,sum(cast(vac.new_vaccinations as int)) over  (partition by dea.location order by dea.location,dea.date) as rollingpeople
+from [dbo].[vacination$] vac
+join [dbo].[coviddeaths] dea
+on dea.location=vac.location
+and dea.date=vac.date
+where dea.continent is not null
+--order by 2,3
+)
+select*,(rollingpeople/population)*100
+from popvsvac
+
+--temp table
+create table #percentpopulationvaccinated
+(
+continent nvarchar(255),
+location nvarchar(255),
+date datetime ,
+new_vaccination numeric,
+rollingpeople numeric)
+ 
+insert into #percentpopulationvaccinated
+select dea.continent, dea.location,dea.date, dea.population,vac.new_vaccinations
+,sum(cast(vac.new_vaccinations as int)) over  (partition by dea.location order by dea.location,dea.date) as rollingpeople
+from [dbo].[vacination$] vac
+join [dbo].[coviddeaths] dea
+on dea.location=vac.location
+and dea.date=vac.date
+where dea.continent is not null
+order by 2,3
+
+
+--creatng view to store data for later visualization
+create view percentpopultionvaccinatted as
+select dea.continent, dea.location,dea.date, dea.population,vac.new_vaccinations
+,sum(cast(vac.new_vaccinations as int)) over  (partition by dea.location order by dea.location,dea.date) as rollingpeople
+from [dbo].[vacination$] vac
+join [dbo].[coviddeaths] dea
+on dea.location=vac.location
+and dea.date=vac.date
+where dea.continent is not null
+
+
+
+
